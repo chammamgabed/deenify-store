@@ -1,1 +1,314 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Deenify</title>
+
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: linear-gradient(135deg, #e0f7fa, #fce4ec);
+}
+
+/* زر مخفي */
+#secretBtn {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 120px;
+    height: 120px;
+    opacity: 0;
+}
+
+/* لوحات */
+.panel {
+    display: none;
+    background: white;
+    padding: 20px;
+    margin: 20px;
+    border-radius: 15px;
+}
+
+/* البحث */
+#searchBox {
+    padding: 12px;
+    width: 85%;
+    max-width: 400px;
+    border-radius: 30px;
+    border: none;
+    margin: 15px;
+}
+
+/* inputs */
+input {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 8px;
+    border: none;
+}
+
+/* المنتجات */
+#products {
+    display: grid;
+    grid-template-columns: repeat(2,1fr);
+    gap: 10px;
+    padding: 10px;
+}
+
+/* كارت */
+.product {
+    background: white;
+    padding: 10px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 320px; /* 👈 كبرنا الكارت */
+}
+
+/* تثبيت العنوان */
+.product h4 {
+    height: 60px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+/* الصورة */
+.image-box {
+    width: 100%;
+    height: 180px; /* 👈 صورة كبيرة */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* تقدر تبدلها cover */
+    border-radius: 10px;
+}
+
+/* الأزرار */
+.buttons {
+    display: flex;
+    gap: 5px;
+    margin-top: auto;
+}
+
+.buy {
+    flex: 1;
+    background: red;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+}
+
+.deleteBtn {
+    flex: 1;
+    background: black;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🛒 Deenify</h1>
+
+<!-- 🔍 البحث -->
+<input id="searchBox" placeholder="🔍 Chercher / Search..." onkeyup="searchProducts()">
+
+<button id="secretBtn" onclick="openAdmin()"></button>
+
+<!-- 🔐 LOGIN -->
+<div id="loginPanel" class="panel">
+    <h3>🔐 Admin Login</h3>
+    <input id="email" placeholder="Email"><br>
+    <input id="password" type="password" placeholder="Password"><br>
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- 🛠️ ADMIN -->
+<div id="adminPanel" class="panel">
+    <h3>Add Product</h3>
+    <input id="name" placeholder="Name"><br>
+    <input id="image" placeholder="Image URL"><br>
+    <input id="link" placeholder="Link"><br>
+    <button onclick="addProduct()">Add</button>
+
+    <br><br>
+    <button onclick="logout()">Logout</button>
+</div>
+
+<!-- 🛒 المنتجات -->
+<div id="products"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const client = supabase.createClient(
+"https://nuwopwcqxewkdazylanb.supabase.co",
+"sb_publishable_F53GV8lPIEHfYb8hPT17SA_wH-7-t2r"
+);
+
+let tap = 0;
+let isAdmin = false;
+let allProducts = [];
+
+// فتح login
+function openAdmin(){
+    tap++;
+    if(tap >= 5){
+        tap = 0;
+        document.getElementById("loginPanel").style.display = "block";
+    }
+}
+
+// login
+async function login(){
+    let email = document.getElementById("email").value;
+    let password = document.getElementById("password").value;
+
+    const { error } = await client.auth.signInWithPassword({ email, password });
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    isAdmin = true;
+
+    document.getElementById("loginPanel").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+
+    loadProducts();
+}
+
+// logout
+async function logout(){
+    await client.auth.signOut();
+    isAdmin = false;
+    document.getElementById("adminPanel").style.display = "none";
+    loadProducts();
+}
+
+// تحميل المنتجات
+async function loadProducts(){
+    const { data } = await client.from("products").select("*");
+    allProducts = data || [];
+    displayProducts(allProducts);
+}
+
+// عرض
+function displayProducts(products){
+    let html = "";
+
+    products.forEach(p=>{
+        html += `
+        <div class="product">
+            <h4>${p.name}</h4>
+
+            <div class="image-box">
+                <img src="${p.image}">
+            </div>
+
+            <div class="buttons">
+                <button class="buy" onclick="
+                    let link='${p.link}';
+                    if(!link.startsWith('http')){
+                        link='https://' + link;
+                    }
+                    window.open(link)
+                ">Buy Now</button>
+
+                ${isAdmin ? `<button class="deleteBtn" onclick="deleteProduct('${p.id}')">Delete</button>` : ""}
+            </div>
+        </div>`;
+    });
+
+    document.getElementById("products").innerHTML = html;
+}
+
+// إضافة
+async function addProduct(){
+    if(!isAdmin){
+        alert("Login first");
+        return;
+    }
+
+    let name = document.getElementById("name").value;
+    let image = document.getElementById("image").value;
+    let link = document.getElementById("link").value;
+
+    await client.from("products").insert([{name, image, link}]);
+    loadProducts();
+}
+
+// حذف
+async function deleteProduct(id){
+    if(!isAdmin) return;
+
+    if(!confirm("Delete product?")) return;
+
+    await client.from("products").delete().eq("id", id);
+    loadProducts();
+}
+
+// 🔍 normalize
+function normalize(text){
+    return text.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .trim();
+}
+
+// 🧠 قاموس
+const dictionary = {
+    charger: ["chargeur", "شاحن"],
+    cable: ["cable", "كابل"],
+    phone: ["telephone", "téléphone", "هاتف"],
+};
+
+// 🔍 البحث
+function searchProducts(){
+    let value = normalize(document.getElementById("searchBox").value);
+
+    let filtered = allProducts.filter(p => {
+        let name = normalize(p.name);
+
+        if(name.includes(value)) return true;
+
+        for(let key in dictionary){
+            let words = [key, ...dictionary[key]];
+
+            if(words.includes(value)){
+                if(words.some(w => name.includes(normalize(w)))){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    });
+
+    displayProducts(filtered);
+}
+
+// تشغيل
+loadProducts();
+</script>
+
+</body>
+</html>
