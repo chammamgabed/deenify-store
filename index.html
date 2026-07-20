@@ -260,26 +260,25 @@ function displayProducts(products){
             <div class="product-info">
                 <h4>${p.name}</h4>
 
-   <button class="buy" onclick="
+<button class="buy" onclick="
 let link='${p.link}';
 if(!link.startsWith('http')) link='https://' + link;
 
 if (/TikTok/i.test(navigator.userAgent)) {
 
-    let open = confirm(
-    "Open in external browser?\n\nPress OK then choose Chrome."
+    alert(
+    '🛒 For shopping:\n\n' +
+    '1- Press ⋮ (top right)\n' +
+    '2- Choose Open in Browser\n' +
+    '3- Open the website in Chrome\n' +
+    '4- Press Buy Now again'
     );
-
-    if(open){
-        window.location.href = link;
-    }
 
 } else {
 
-    window.open(link, "_blank");
+    window.open(link, '_blank');
 
 }
-
 ">Buy Now</button>
 
                 ${(isAdmin && adminVisible) 
